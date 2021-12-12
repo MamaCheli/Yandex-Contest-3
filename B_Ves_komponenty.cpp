@@ -3,63 +3,70 @@
 #include <unordered_map>
 #include <vector>
 
+template <typename T>
 class DSU {
-    int num_of_bridge_ = 0;
+    T num_of_bridge_ = 0;
     int size_ = 0;
-    std::vector<int> parent_;
+    std::vector<T> parent_;
     std::vector<int> rank_;
-    std::vector<int> weight_;
+    std::vector<T> weight_;
 
-    void MakeSet();
-    int FindSet(int);
+    T FindSet(T);
+    void ChangeWeightAndParent(T, T, T);
 
 public:
     explicit DSU(int);
-    void Union(int, int, int);
-    int GetWeight(int);
+    void Union(T, T, T);
+    T GetWeight(T);
 };
 
-void DSU::MakeSet() {
-    parent_[size_] = size_;
-    size_++;
-}
-int DSU::FindSet(int v) {
+template <typename T>
+T DSU<T>::FindSet(T v) {
     if (v == parent_[v]) {
         return v;
     }
     return parent_[v] = FindSet(parent_[v]);
 }
 
-DSU::DSU(int num_of_vertex) {
+template <typename T>
+DSU<T>::DSU(int num_of_vertex) {
     parent_.resize(num_of_vertex + 1);
     rank_.resize(num_of_vertex + 1);
     weight_.resize(num_of_vertex + 1);
     for (int i = 0; i < num_of_vertex; i++) {
-        MakeSet();
+        parent_[size_] = size_;
+        size_++;
         weight_[i] = 0;
     }
 }
-void DSU::Union(int x, int y, int weight) {
-    x = FindSet(x);
-    y = FindSet(y);
-    if (x != y) {
+
+template <typename T>
+void DSU<T>::ChangeWeightAndParent(T first, T second, T weight) {
+    weight_[first] += weight_[second] + weight;
+    parent_[second] = first;
+}
+
+template <typename T>
+void DSU<T>::Union(T first, T second, T weight) {
+    first = FindSet(first);
+    second = FindSet(second);
+    if (first != second) {
         size_--;
-        if (rank_[x] < rank_[y]) {
-            weight_[y] += weight_[x] + weight;
-            parent_[x] = y;
-        } else if (rank_[y] < rank_[x]) {
-            weight_[x] += weight_[y] + weight;
-            parent_[y] = x;
+        if (rank_[first] < rank_[second]) {
+            ChangeWeightAndParent(second, first, weight);
+        } else if (rank_[second] < rank_[first]) {
+            ChangeWeightAndParent(first, second, weight);
         } else {
-            weight_[y] += weight_[x] + weight;
-            parent_[x] = y;
-            rank_[y]++;
+            ChangeWeightAndParent(second, first, weight);
+            rank_[second]++;
         }
     } else {
-        weight_[x] += weight;
+        weight_[first] += weight;
     }
 }
-int DSU::GetWeight(int v) {
+
+template <typename T>
+T DSU<T>::GetWeight(T v) {
     return weight_[FindSet(v)];
 }
 
@@ -69,7 +76,7 @@ int main() {
     int num_of_vertex;
     int num_of_command;
     std::cin >> num_of_vertex >> num_of_command;
-    DSU graph(num_of_vertex);
+    DSU<int> graph(num_of_vertex);
     for (int i = 0; i < num_of_command; i++) {
         int command;
         std::cin >> command;
