@@ -3,24 +3,51 @@
 #include <set>
 #include <map>
 
+using VERTEX = int64_t;
+using DIST = int64_t;
+using Three = std::pair<std::pair<VERTEX, VERTEX>, DIST>;
+
 const int64_t kMaxWeight = 2009000999;
 
-using Vertex = int64_t;
-using DistT = int64_t;
-
-class Graph {
-    Vertex num_vertex_;
-    std::vector<std::vector<DistT>> graph_;
-    std::vector<DistT> dist_;
-    std::map<std::pair<Vertex, Vertex>, DistT> edges_;
-    void Dijkstra(Vertex);
+class GraphMatrix {
+    VERTEX num_vertex_;
 
 public:
-    Graph(Vertex, const std::vector<std::pair<std::pair<Vertex, Vertex>, DistT>>&);
-    std::vector<DistT> GetWay(Vertex);
+    std::vector<std::vector<VERTEX>> matrix_;
+    explicit GraphMatrix(VERTEX);
+    void AddEdge(VERTEX, VERTEX, DIST);
 };
 
-Graph::Graph(Vertex num_vertex, const std::vector<std::pair<std::pair<Vertex, Vertex>, DistT>>& vertex) {
+GraphMatrix::GraphMatrix(VERTEX num_vertex) {
+    num_vertex_ = num_vertex;
+    for (VERTEX i = 0; i < num_vertex_; i++) {
+        std::vector<VERTEX> tmp(num_vertex_, 0);
+        matrix_.push_back(tmp);
+    }
+}
+
+void GraphMatrix::AddEdge(VERTEX u, VERTEX v, DIST weight) {
+    if (u == v) {
+        return;
+    }
+    matrix_[u][v] = weight;
+    matrix_[v][u] = weight;
+}
+
+class GraphList {
+    VERTEX num_vertex_;
+    std::vector<std::vector<DIST>> graph_;
+    std::vector<DIST> dist_;
+    std::map<std::pair<VERTEX, VERTEX>, DIST> edges_;
+    void Dijkstra(VERTEX);
+
+public:
+    GraphList(VERTEX, const std::vector<Three>&);
+    GraphList(VERTEX, GraphMatrix);
+    std::vector<DIST> GetWay(VERTEX);
+};
+
+GraphList::GraphList(VERTEX num_vertex, const std::vector<Three>& vertex) {
     num_vertex_ = num_vertex;
     graph_.resize(num_vertex_);
     dist_.resize(num_vertex_, kMaxWeight);
@@ -34,20 +61,38 @@ Graph::Graph(Vertex num_vertex, const std::vector<std::pair<std::pair<Vertex, Ve
     }
 }
 
-void Graph::Dijkstra(Vertex v) {
+GraphList::GraphList(VERTEX num_vertex, GraphMatrix gm) {
+    num_vertex_ = num_vertex;
+    graph_.resize(num_vertex_ + 1);
+    dist_.resize(num_vertex_, kMaxWeight);
+    for (VERTEX u = 0; u <= num_vertex_; u++) {
+        for (VERTEX v = 0; v <= num_vertex_; v++) {
+            if (gm.matrix_[u][v] == 0) {
+                continue;
+            }
+            graph_[u].emplace_back(v);
+            if (edges_.find(std::make_pair(u, v)) == edges_.end() || edges_[std::make_pair(u, v)] > gm.matrix_[u][v]) {
+                edges_[std::make_pair(u, v)] = gm.matrix_[u][v];
+                edges_[std::make_pair(v, u)] = gm.matrix_[u][v];
+            }
+        }
+    }
+}
+
+void GraphList::Dijkstra(VERTEX v) {
     dist_[v] = 0;
-    std::set<std::pair<Vertex, Vertex>> heap;
-    for (Vertex i = 0; i < num_vertex_; i++) {
+    std::set<std::pair<VERTEX, VERTEX>> heap;
+    for (VERTEX i = 0; i < num_vertex_; i++) {
         heap.insert(std::make_pair(dist_[i], i));
     }
     while (!heap.empty()) {
-        std::pair<Vertex, Vertex> argmin = *heap.begin();
+        std::pair<VERTEX, VERTEX> argmin = *heap.begin();
         heap.erase(argmin);
-        Vertex u = argmin.second;
+        VERTEX u = argmin.second;
         for (auto& i : graph_[u]) {
             if (heap.find(std::make_pair(dist_[i], i)) != heap.end() &&
                 dist_[i] > dist_[u] + edges_[std::make_pair(i, u)]) {
-                DistT old_dist = dist_[i];
+                DIST old_dist = dist_[i];
                 dist_[i] = dist_[u] + edges_[std::make_pair(i, u)];
                 heap.erase(std::make_pair(old_dist, i));
                 heap.insert(std::make_pair(dist_[i], i));
@@ -56,7 +101,7 @@ void Graph::Dijkstra(Vertex v) {
     }
 }
 
-std::vector<DistT> Graph::GetWay(Vertex v) {
+std::vector<DIST> GraphList::GetWay(VERTEX v) {
     Dijkstra(v);
     return dist_;
 }
@@ -67,25 +112,25 @@ int main() {
     int num_command = 0;
     std::cin >> num_command;
 
-    std::vector<std::vector<DistT>> path;
+    std::vector<std::vector<DIST>> path;
     path.reserve(num_command);
     for (int i = 0; i < num_command; i++) {
-        Vertex num_vertex = 0;
-        Vertex num_edges = 0;
+        VERTEX num_vertex = 0;
+        VERTEX num_edges = 0;
         std::cin >> num_vertex >> num_edges;
 
-        std::vector<std::pair<std::pair<Vertex, Vertex>, DistT>> edges;
+        std::vector<Three> edges;
         edges.reserve(num_edges);
-        for (Vertex j = 0; j < num_edges; j++) {
-            Vertex first;
-            Vertex second;
-            DistT weight;
+        for (VERTEX j = 0; j < num_edges; j++) {
+            VERTEX first;
+            VERTEX second;
+            DIST weight;
             std::cin >> first >> second >> weight;
             edges.emplace_back(std::make_pair(std::make_pair(first, second), weight));
         }
-        Vertex v;
+        VERTEX v;
         std::cin >> v;
-        Graph g(num_vertex, edges);
+        GraphList g(num_vertex, edges);
         path.emplace_back(g.GetWay(v));
     }
     for (auto& i : path) {
